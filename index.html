@@ -1,0 +1,923 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Position Size &amp; R Ladder</title>
+<meta name="description" content="Position sizing and R-multiple ladder calculator for swing trading with a three-stop exit structure.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+*{box-sizing:border-box}
+:root{
+  color-scheme:light;
+  --paper:#EEF1F5; --card:#FFFFFF; --card-2:#F7F9FB;
+  --ink:#0F141A; --muted:#59646F; --faint:#8A95A0;
+  --line:#D6DDE4; --line-soft:#E6EBF0;
+  --accent:#1F4E79; --accent-soft:#E2EBF3;
+  --risk:#A33421; --risk-soft:#F7E6E2;
+  --gain:#166B45; --gain-soft:#E1F0E8;
+  --hold:#855E10; --hold-soft:#F6EDD8;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    color-scheme:dark;
+    --paper:#0C1116; --card:#151C24; --card-2:#1B232C;
+    --ink:#E4EAF0; --muted:#98A4B0; --faint:#6E7B87;
+    --line:#26313C; --line-soft:#1F2832;
+    --accent:#77AEDD; --accent-soft:#17293A;
+    --risk:#E4816D; --risk-soft:#33201C;
+    --gain:#5CBD8C; --gain-soft:#152C22;
+    --hold:#DCAF48; --hold-soft:#2C2416;
+  }
+}
+html,body{margin:0}
+[hidden]{display:none!important}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+img{max-width:100%}
+.wrap{max-width:720px;margin:0 auto;padding-left:16px;padding-right:16px;padding-block:28px 56px}
+
+h1{font-family:Archivo,sans-serif;font-weight:700;font-size:clamp(27px,7vw,38px);
+   line-height:1.05;letter-spacing:-0.02em;margin:0 0 10px;text-wrap:balance}
+.sub{color:var(--muted);margin:0 0 4px;max-width:58ch}
+.src{font-size:12.5px;color:var(--faint);margin:0}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:34px 0 12px}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.card + .card{margin-top:12px}
+
+.inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(138px,1fr));gap:10px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.field input,.field select{
+  font-family:"IBM Plex Mono",monospace;font-size:16px;font-weight:500;
+  padding:9px 10px;border:1px solid var(--line);border-radius:7px;
+  background:var(--card-2);color:var(--ink);width:100%;
+  font-variant-numeric:tabular-nums;
+}
+.field input:focus-visible,.field select:focus-visible{
+  outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+.opt{text-transform:none;letter-spacing:0;color:var(--faint)}
+
+.headline{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;padding-top:14px;
+  border-top:1px solid var(--line-soft)}
+.big{flex:1 1 130px;background:var(--card-2);border:1px solid var(--line-soft);
+  border-radius:9px;padding:10px 12px}
+.big .k{font-family:"IBM Plex Mono",monospace;font-size:9.5px;font-weight:600;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:3px}
+.big .v{font-family:"IBM Plex Mono",monospace;font-size:20px;font-weight:600;
+  font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.big .n{font-size:11px;color:var(--faint);margin-top:2px;display:block}
+
+.ladder{margin-top:16px;border-top:1px solid var(--line-soft);padding-top:12px}
+.lbl{font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:600;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin:0 0 4px}
+.rung{display:flex;align-items:baseline;gap:8px;padding:6px 0;
+  border-bottom:1px solid var(--line-soft)}
+.rung:last-child{border-bottom:0}
+.rung .pct{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;
+  color:var(--muted);width:44px;flex:none}
+.rung .nm{font-size:12.5px;color:var(--muted);flex:1 1 60px;min-width:0}
+.rung .mv{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--faint);
+  width:52px;flex:none;text-align:right;font-variant-numeric:tabular-nums}
+.rung .px{font-family:"IBM Plex Mono",monospace;font-size:16px;font-weight:600;
+  font-variant-numeric:tabular-nums;color:var(--ink);width:76px;flex:none;text-align:right}
+.rung.r1 .px,.rung.r2 .px{color:var(--hold)}
+.rung.r3 .px{color:var(--risk)}
+.rung.entry{background:var(--card-2);margin:0 -8px;padding:6px 8px;border-radius:6px}
+.rung.entry .nm,.rung.entry .pct{color:var(--ink);font-weight:600}
+.rung.act .px{color:var(--gain)}
+.rung.act .nm{color:var(--ink);font-weight:500}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:500;
+  background:var(--card-2);border:1px solid var(--line-soft);border-radius:20px;
+  padding:5px 11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.chip b{color:var(--ink);font-weight:600}
+.chip.pass{background:var(--gain-soft);border-color:transparent;color:var(--gain)}
+.chip.pass b{color:var(--gain)}
+.chip.warn{background:var(--hold-soft);border-color:transparent;color:var(--hold)}
+.chip.warn b{color:var(--hold)}
+.chip.fail{background:var(--risk-soft);border-color:transparent;color:var(--risk)}
+.chip.fail b{color:var(--risk)}
+.hint{font-size:12.5px;color:var(--muted);margin:0}
+.hint.top{margin-bottom:14px}
+
+ol.steps{margin:0;padding-left:0;list-style:none;counter-reset:s}
+ol.steps li{counter-increment:s;position:relative;padding-left:32px;margin-bottom:13px;font-size:14px}
+ol.steps li:last-child{margin-bottom:0}
+ol.steps li::before{content:counter(s);position:absolute;left:0;top:0;
+  font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;
+  width:21px;height:21px;border-radius:50%;display:grid;place-items:center;
+  background:var(--accent-soft);color:var(--accent)}
+ol.steps strong{font-weight:600}
+code{font-family:"IBM Plex Mono",monospace;font-size:12.5px;background:var(--card-2);
+  padding:1px 5px;border-radius:4px;border:1px solid var(--line-soft)}
+
+.stepper{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.stepper::-webkit-scrollbar{display:none}
+.stepper button{flex:none;font-family:"IBM Plex Mono",monospace;font-size:11.5px;
+  font-weight:600;letter-spacing:.04em;padding:8px 12px;border-radius:20px;cursor:pointer;
+  background:var(--card);border:1px solid var(--line);color:var(--muted);
+  transition:background .15s,color .15s,border-color .15s}
+.stepper button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--card)}
+.stepper button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.states{position:relative;display:flex;flex-direction:column;gap:12px;
+  padding-left:32px;margin-top:14px}
+.states::before{content:"";position:absolute;left:10px;top:14px;bottom:14px;
+  width:2px;background:var(--line)}
+.state{position:relative;background:var(--card);border:1px solid var(--line);
+  border-radius:12px;padding:15px 16px;transition:border-color .18s,box-shadow .18s;
+  --phase:var(--accent);--phase-soft:var(--accent-soft)}
+.state::before{content:"";position:absolute;left:-27px;top:19px;width:12px;height:12px;
+  border-radius:50%;background:var(--card);border:2.5px solid var(--phase)}
+.state.on{border-color:var(--phase);box-shadow:0 0 0 2px var(--phase-soft)}
+.state.on::before{background:var(--phase)}
+.s-scale{--phase:var(--gain);--phase-soft:var(--gain-soft)}
+.s-trail,.s-loop{--phase:var(--hold);--phase-soft:var(--hold-soft)}
+.s-exit{--phase:var(--risk);--phase-soft:var(--risk-soft)}
+.st-head{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-bottom:11px}
+.st-id{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;
+  letter-spacing:.1em;color:var(--card);background:var(--phase);padding:2.5px 7px;border-radius:5px}
+.st-name{font-family:Archivo,sans-serif;font-size:17px;font-weight:600;letter-spacing:-.01em}
+.row{display:flex;gap:9px;padding:6px 0;align-items:baseline}
+.row + .row{border-top:1px dashed var(--line-soft)}
+.row .k{font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:600;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--faint);
+  width:64px;flex:none;padding-top:2px}
+.row .v{flex:1 1 auto;min-width:0;font-size:14px}
+.row .v em{font-style:normal;font-weight:600;color:var(--phase)}
+.arrow{display:block;margin-top:9px;padding:8px 10px;border-radius:8px;
+  background:var(--phase-soft);font-size:13px}
+.loopnote{display:inline-flex;align-items:center;gap:6px;margin-top:9px;
+  font-family:"IBM Plex Mono",monospace;font-size:11.5px;font-weight:600;
+  color:var(--hold);background:var(--hold-soft);padding:6px 10px;border-radius:20px}
+
+details{background:var(--card);border:1px solid var(--line);border-radius:10px;
+  margin-bottom:8px;overflow:hidden}
+summary{cursor:pointer;padding:13px 15px;font-weight:600;font-size:14px;
+  list-style:none;display:flex;align-items:center;gap:10px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";margin-left:auto;color:var(--faint);
+  font-family:"IBM Plex Mono",monospace;font-size:16px}
+details[open] summary::after{content:"\2212"}
+summary:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.tag{font-family:"IBM Plex Mono",monospace;font-size:9.5px;font-weight:600;
+  letter-spacing:.09em;padding:2.5px 6px;border-radius:4px;flex:none}
+.tag.trim{background:var(--gain-soft);color:var(--gain)}
+.tag.add{background:var(--accent-soft);color:var(--accent)}
+.tag.stop{background:var(--hold-soft);color:var(--hold)}
+.det-body{padding:0 15px 15px;font-size:14px;color:var(--muted)}
+.det-body p{margin:0 0 9px}
+.det-body p:last-child{margin-bottom:0}
+.det-body strong{color:var(--ink);font-weight:600}
+.math{font-family:"IBM Plex Mono",monospace;font-size:12.5px;line-height:1.75;
+  background:var(--card-2);border:1px solid var(--line-soft);border-radius:8px;
+  padding:11px 13px;margin:10px 0;color:var(--ink);
+  font-variant-numeric:tabular-nums;white-space:pre;overflow-x:auto}
+
+/* ---- buttons ---- */
+.btn{font-family:"IBM Plex Sans",sans-serif;font-size:13.5px;font-weight:600;
+  padding:9px 15px;border-radius:8px;cursor:pointer;border:1px solid var(--line);
+  background:var(--card-2);color:var(--ink);transition:background .15s,border-color .15s}
+.btn:hover{border-color:var(--accent)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+@media (prefers-color-scheme:dark){.btn.primary{color:#0C1116}}
+.btn.sm{font-size:12px;padding:6px 11px}
+.btn.danger{color:var(--risk);border-color:transparent;background:var(--risk-soft)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn[disabled]:hover{border-color:var(--line)}
+
+.logrow{display:flex;gap:10px;align-items:flex-end;margin-top:16px;
+  padding-top:14px;border-top:1px solid var(--line-soft);flex-wrap:wrap}
+.logrow .field{flex:1 1 130px}
+#ticker{text-transform:uppercase}
+.msg{font-size:12.5px;margin:8px 0 0;min-height:17px;color:var(--muted)}
+.msg.ok{color:var(--gain)}
+.msg.bad{color:var(--risk)}
+
+/* ---- stats ---- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:8px;margin-bottom:14px}
+.stat{background:var(--card-2);border:1px solid var(--line-soft);border-radius:9px;padding:9px 10px}
+.stat .k{font-family:"IBM Plex Mono",monospace;font-size:9px;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:2px}
+.stat .v{font-family:"IBM Plex Mono",monospace;font-size:17px;font-weight:600;
+  font-variant-numeric:tabular-nums}
+.stat.pos .v{color:var(--gain)}
+.stat.neg .v{color:var(--risk)}
+
+/* ---- trade cards ---- */
+.trade{border:1px solid var(--line);border-radius:10px;padding:13px 14px;margin-bottom:9px;
+  background:var(--card-2)}
+.trade.done{opacity:.72}
+.t-top{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:9px}
+.t-tick{font-family:Archivo,sans-serif;font-size:17px;font-weight:700;letter-spacing:-.01em}
+.t-date{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--faint)}
+.t-res{font-family:"IBM Plex Mono",monospace;font-size:15px;font-weight:600;margin-left:auto;
+  font-variant-numeric:tabular-nums}
+.t-res.pos{color:var(--gain)} .t-res.neg{color:var(--risk)}
+.t-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:7px 12px;
+  font-family:"IBM Plex Mono",monospace;font-size:12px;font-variant-numeric:tabular-nums}
+.t-grid div{color:var(--muted)}
+.t-grid b{color:var(--ink);font-weight:600}
+.t-acts{display:flex;gap:7px;align-items:center;margin-top:11px;flex-wrap:wrap}
+.t-acts select{font-family:"IBM Plex Mono",monospace;font-size:12px;padding:6px 9px;
+  border-radius:7px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+.t-acts .spacer{margin-left:auto}
+.closepanel{display:flex;gap:8px;align-items:flex-end;margin-top:10px;
+  padding-top:10px;border-top:1px dashed var(--line);flex-wrap:wrap}
+.closepanel .field{flex:1 1 92px}
+.closepanel .field input{font-size:14px;padding:7px 9px}
+.empty{font-size:13.5px;color:var(--faint);text-align:center;padding:22px 0}
+
+#exportPanel{margin-top:12px;padding-top:12px;border-top:1px solid var(--line-soft)}
+#exportPanel textarea{width:100%;height:150px;font-family:"IBM Plex Mono",monospace;
+  font-size:11px;line-height:1.5;padding:10px;border-radius:8px;border:1px solid var(--line);
+  background:var(--card-2);color:var(--ink);resize:vertical;white-space:pre}
+
+footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);
+  font-size:12px;color:var(--faint)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Position Size &amp; R Ladder</h1>
+<p class="sub">Enter your account size, the risk you allow per trade, and the price levels. It returns your share count, the three stop prices, and the exact prices where each profit-taking stage fires.</p>
+<p class="src">Exit structure after Jeff Sun (jfsrev) — "Systemizing profit taking," Oct 2024</p>
+
+<!-- ============ CALCULATOR ============ -->
+<p class="eyebrow">Calculator</p>
+
+<div class="card">
+  <div class="inputs">
+    <div class="field">
+      <label for="port">Portfolio $</label>
+      <input id="port" type="number" inputmode="decimal" step="1000" value="100000">
+    </div>
+    <div class="field">
+      <label for="riskpct">Risk per trade</label>
+      <select id="riskpct">
+        <option value="0.10">0.10 %</option>
+        <option value="0.15">0.15 %</option>
+        <option value="0.25" selected>0.25 %</option>
+        <option value="0.50">0.50 %</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="entry">Entry price</label>
+      <input id="entry" type="number" inputmode="decimal" step="0.01" value="52.00">
+    </div>
+    <div class="field">
+      <label for="lod">Low of day</label>
+      <input id="lod" type="number" inputmode="decimal" step="0.01" value="50.75">
+    </div>
+    <div class="field">
+      <label for="cushion">Stop cushion</label>
+      <select id="cushion">
+        <option value="0">Exact LoD</option>
+        <option value="0.25">0.25 % below</option>
+        <option value="0.5" selected>0.50 % below</option>
+        <option value="1">1.00 % below</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="atr">ATR % <span class="opt">(optional)</span></label>
+      <input id="atr" type="number" inputmode="decimal" step="0.1" value="4.6">
+    </div>
+  </div>
+
+  <div class="headline">
+    <div class="big"><span class="k">Risk budget</span><span class="v" id="budget">—</span><span class="n" id="budgetN">&nbsp;</span></div>
+    <div class="big"><span class="k">1R per share</span><span class="v" id="rval">—</span><span class="n" id="rvalN">&nbsp;</span></div>
+    <div class="big"><span class="k">Buy</span><span class="v" id="shares">—</span><span class="n" id="sharesN">&nbsp;</span></div>
+  </div>
+
+  <div class="ladder">
+    <p class="lbl">Stops — sell a third at each</p>
+    <div class="rung r3"><span class="pct">−1R</span><span class="nm">Stop 3 · <span id="q3">—</span></span><span class="mv" id="m3">—</span><span class="px" id="s3">—</span></div>
+    <div class="rung r2"><span class="pct">−0.66R</span><span class="nm">Stop 2 · <span id="q2">—</span></span><span class="mv" id="m2">—</span><span class="px" id="s2">—</span></div>
+    <div class="rung r1"><span class="pct">−0.33R</span><span class="nm">Stop 1 · <span id="q1">—</span></span><span class="mv" id="m1">—</span><span class="px" id="s1">—</span></div>
+    <div class="rung entry"><span class="pct">0R</span><span class="nm">Entry</span><span class="mv"></span><span class="px" id="e0">—</span></div>
+  </div>
+
+  <div class="ladder">
+    <p class="lbl">Targets</p>
+    <div class="rung"><span class="pct">+1R</span><span class="nm">—</span><span class="mv" id="mt1">—</span><span class="px" id="t1">—</span></div>
+    <div class="rung act"><span class="pct">+2R</span><span class="nm">Shave 33% · Day 0–2</span><span class="mv" id="mt2">—</span><span class="px" id="t2">—</span></div>
+    <div class="rung"><span class="pct">+3R</span><span class="nm">—</span><span class="mv" id="mt3">—</span><span class="px" id="t3">—</span></div>
+    <div class="rung act"><span class="pct">+4R</span><span class="nm">All stops to breakeven</span><span class="mv" id="mt4">—</span><span class="px" id="t4">—</span></div>
+    <div class="rung"><span class="pct">+5R</span><span class="nm">—</span><span class="mv" id="mt5">—</span><span class="px" id="t5">—</span></div>
+  </div>
+
+  <div class="chips">
+    <span class="chip">Capital <b id="cap">—</b></span>
+    <span class="chip">Full stop-out <b id="avgr">—</b></span>
+    <span class="chip" id="chipAtr">2R in ATR units <b id="atrmult">—</b></span>
+    <span class="chip" id="chipGate">LoD distance <b id="gate">—</b></span>
+  </div>
+
+  <p class="hint" style="margin-top:12px">Set price alerts at <b style="color:var(--gain)">+2R</b> and <b style="color:var(--gain)">+4R</b>. Nothing above +4R needs a target — the 10-MA trail takes over.</p>
+
+  <div class="logrow">
+    <div class="field">
+      <label for="ticker">Ticker</label>
+      <input id="ticker" type="text" placeholder="MU" maxlength="12" autocapitalize="characters" autocomplete="off">
+    </div>
+    <button type="button" class="btn primary" id="logBtn">Log this trade</button>
+  </div>
+  <p class="msg" id="logMsg"></p>
+</div>
+
+<!-- ============ TRADE LOG ============ -->
+<p class="eyebrow">Trade log</p>
+
+<div class="card">
+  <div class="stats">
+    <div class="stat"><span class="k">Open</span><span class="v" id="stOpen">0</span></div>
+    <div class="stat"><span class="k">Closed</span><span class="v" id="stClosed">0</span></div>
+    <div class="stat"><span class="k">Win rate</span><span class="v" id="stWin">—</span></div>
+    <div class="stat" id="stAvgWrap"><span class="k">Avg R</span><span class="v" id="stAvg">—</span></div>
+    <div class="stat" id="stTotWrap"><span class="k">Total R</span><span class="v" id="stTot">—</span></div>
+  </div>
+
+  <div id="tradeList"></div>
+
+  <div class="t-acts" style="margin-top:14px;padding-top:13px;border-top:1px solid var(--line-soft)">
+    <button type="button" class="btn sm" id="csvBtn">Export CSV</button>
+    <button type="button" class="btn sm" id="jsonBtn">Backup JSON</button>
+    <label class="btn sm" for="restoreFile" style="margin:0">Restore backup</label>
+    <input type="file" id="restoreFile" accept=".json,application/json" hidden>
+  </div>
+
+  <div id="exportPanel" hidden>
+    <div class="t-acts" style="margin-bottom:8px">
+      <span class="lbl" id="exportLbl" style="margin:0">Export</span>
+      <span class="spacer"></span>
+      <button type="button" class="btn sm" id="copyBtn">Copy</button>
+      <a class="btn sm" id="dlBtn" download>Download</a>
+      <button type="button" class="btn sm" id="closeExport">Done</button>
+    </div>
+    <textarea id="exportText" readonly spellcheck="false"></textarea>
+  </div>
+
+  <p class="hint" style="margin-top:12px">Trades are stored in this browser only — nothing is uploaded, and no one else can see them. Clearing site data erases them, so take a JSON backup now and then.</p>
+</div>
+
+<!-- ============ HOW TO USE ============ -->
+<p class="eyebrow">How to use it</p>
+
+<div class="card">
+  <ol class="steps">
+    <li><strong>Portfolio and risk.</strong> Enter your account value and pick what you're willing to lose on one trade. 0.25% of $100,000 is $250. Start at the low end — the percentage is the single biggest driver of how long you survive a losing streak.</li>
+    <li><strong>Entry price.</strong> The price you actually filled at, not the level you planned. A fill that slipped changes every number below it.</li>
+    <li><strong>Low of day.</strong> The session low at the moment you enter. This anchors the whole structure: it is where the final stop sits and what defines 1R.</li>
+    <li><strong>Stop cushion.</strong> Placing the last stop exactly at the low invites a wick to take you out before the move. A cushion of 0.5% below the low is the common choice — it widens 1R slightly, which shrinks your share count, so it is a real trade-off rather than free insurance.</li>
+    <li><strong>ATR %.</strong> Optional, from your charting platform. It powers the two sanity checks in the chips: whether your entry is too far off the low, and whether 2R is realistically reachable.</li>
+    <li><strong>Read off the ladder.</strong> Buy the share count shown. Place all three stops immediately. Set alerts at +2R and +4R. Then follow the stages below.</li>
+  </ol>
+</div>
+
+<div class="card">
+  <p class="lbl">What the two checks mean</p>
+  <p class="hint" style="margin-bottom:10px"><b>LoD distance</b> — how far above the session low you entered, measured in ATR. Under 60% is a clean entry. 60–70% is acceptable only when volume already confirms the breakout. Above 70% you are chasing: the stop is far away, so the same price move earns you far less.</p>
+  <p class="hint"><b>2R in ATR units</b> — how many average ranges the stock must travel to reach the first profit stage. Around 1.5–2 is reachable inside the first three sessions. Above 3 and the +2R shave will rarely trigger before Day 3.</p>
+</div>
+
+<!-- ============ STAGES ============ -->
+<p class="eyebrow">Where is the trade?</p>
+<div class="stepper" id="stepper">
+  <button type="button" data-t="s0" aria-pressed="false">DAY 0</button>
+  <button type="button" data-t="s1" aria-pressed="false">DAY 0–2</button>
+  <button type="button" data-t="s2" aria-pressed="false">DAY 3</button>
+  <button type="button" data-t="s3" aria-pressed="false">DAY 4+</button>
+  <button type="button" data-t="s4" aria-pressed="false">10-MA BREAK</button>
+  <button type="button" data-t="s5" aria-pressed="false">STOPPED</button>
+</div>
+
+<div class="states">
+
+  <div class="state s-entry" id="s0">
+    <div class="st-head"><span class="st-id">S0</span><span class="st-name">Entry</span></div>
+    <div class="row"><span class="k">Enter</span><span class="v">Full size, split in three. Entry no more than <em>60%</em> of an ATR above the session low.</span></div>
+    <div class="row"><span class="k">Stops</span><span class="v">All three go in at once, at the prices the calculator gives.</span></div>
+    <div class="row"><span class="k">Watch</span><span class="v">Price reaching +2R · any stop level · the arrival of Day 3.</span></div>
+    <span class="arrow"><b>+2R →</b> S1 &nbsp;·&nbsp; <b>stop hit →</b> S5 &nbsp;·&nbsp; <b>Day 3 →</b> S2</span>
+  </div>
+
+  <div class="state s-scale" id="s1">
+    <div class="st-head"><span class="st-id">S1</span><span class="st-name">First shave</span></div>
+    <div class="row"><span class="k">Trigger</span><span class="v">Price touches <em>+2R</em> at any point during Day 0–2.</span></div>
+    <div class="row"><span class="k">Do</span><span class="v">Sell 33%. Keep all three stop <em>prices</em> where they are — just resize each order to the shares you still hold.</span></div>
+    <div class="row"><span class="k">Hold</span><span class="v">Two thirds of the original size, still on the three-stop ladder.</span></div>
+    <span class="arrow"><b>Day 3 →</b> S2 &nbsp;·&nbsp; <b>above +4R before Day 4 →</b> S3 immediately</span>
+  </div>
+
+  <div class="state s-reset" id="s2">
+    <div class="st-head"><span class="st-id">S2</span><span class="st-name">Day 3 reset</span></div>
+    <div class="row"><span class="k">Do</span><span class="v">Sell another 33% — profit on a winner, or risk off a trade that stalled but still sits above your entry.</span></div>
+    <div class="row"><span class="k">Stops</span><span class="v">Cancel all three. Replace with <em>one stop at your entry price</em> on everything that remains.</span></div>
+    <div class="row"><span class="k">Note</span><span class="v">This is not an exit checkpoint. A stalled trade gets trimmed and de-risked, not closed.</span></div>
+    <span class="arrow"><b>Always →</b> S3</span>
+  </div>
+
+  <div class="state s-trail" id="s3">
+    <div class="st-head"><span class="st-id">S3</span><span class="st-name">Trailing</span></div>
+    <div class="row"><span class="k">Hold</span><span class="v">Hard stop at breakeven, mental stop on the <em>10-day moving average</em>.</span></div>
+    <div class="row"><span class="k">Rule</span><span class="v"><em>Closes only.</em> An intraday dip through the 10-MA means nothing. Leave the trade alone.</span></div>
+    <div class="row"><span class="k">Also</span><span class="v">Stretched 8–10× ATR above the 50-MA → sell 33% into strength. A tight pause under 4× → add 50%.</span></div>
+    <span class="arrow"><b>Daily close below the 10-MA →</b> S4</span>
+  </div>
+
+  <div class="state s-loop" id="s4">
+    <div class="st-head"><span class="st-id">S4</span><span class="st-name">Opening-range trail</span></div>
+    <div class="row"><span class="k">Open</span><span class="v">Stop stays at breakeven into the bell. Let the first <em>5 minutes</em> trade.</span></div>
+    <div class="row"><span class="k">Then</span><span class="v">Move the stop to the low of that 5-minute range. Let the market take it out.</span></div>
+    <div class="row"><span class="k">No fill</span><span class="v">Not taken out by the close? Reset to breakeven overnight and set a fresh range low tomorrow.</span></div>
+    <span class="loopnote">↺ Repeats every session until it fills</span>
+    <span class="arrow"><b>Stop fills →</b> S5. This loop is what carries a winner for months.</span>
+  </div>
+
+  <div class="state s-exit" id="s5">
+    <div class="st-head"><span class="st-id">S5</span><span class="st-name">Out</span></div>
+    <div class="row"><span class="k">Done</span><span class="v">Log the result in R, not dollars. Record which stop filled and every stage you took or skipped.</span></div>
+    <div class="row"><span class="k">Re-entry</span><span class="v">Stopped before Day 4? There is a defined way back in — first nuance below.</span></div>
+  </div>
+
+</div>
+
+<!-- ============ NUANCES ============ -->
+<p class="eyebrow">Five nuances</p>
+
+<details>
+  <summary><span class="tag add">ADD</span> Stopped out before Day 4</summary>
+  <div class="det-body">
+    <p>Set a price alert at the <strong>high of the day you were stopped</strong>. If it triggers, add back half of what remains — inverse pyramid.</p>
+    <div class="math">10,000  shares in
+−6,666  stopped out (stops 1 and 2)
+─────
+ 3,334  remaining
++1,667  added back (50% of remainder)
+─────
+ 5,001  → 50% net size, not 33%</div>
+    <p>Sized this way, a later stop-out at the low still keeps total risk under 1R.</p>
+  </div>
+</details>
+
+<details>
+  <summary><span class="tag add">ADD</span> Sideways pause after Day 4</summary>
+  <div class="det-body">
+    <p>A tight consolidation while <strong>under 4× ATR above the 50-MA</strong> is an add, not a trim. Inverse pyramid 50% of your net size.</p>
+    <p>Adding small keeps your average price from moving much, so it stays below the 10-MA stop and the trail keeps working.</p>
+  </div>
+</details>
+
+<details>
+  <summary><span class="tag trim">TRIM</span> Catalyst gap trade</summary>
+  <div class="det-body">
+    <p>On a news or earnings gap, +2R can arrive within half an hour of the open. Take the 33% there anyway — the rule is the level, not the clock.</p>
+    <p>At the Day 1 open, shave another 33%.</p>
+  </div>
+</details>
+
+<details>
+  <summary><span class="tag stop">STOP</span> Above +4R before Day 4</summary>
+  <div class="det-body">
+    <p>Consolidate everything to a <strong>single breakeven stop</strong> straight away, ahead of the normal Day 3 schedule.</p>
+    <p>You accept giving back unrealized profit. But holding the original stops at a parabolic point means risking a trip back below your entry, which makes no sense from there.</p>
+  </div>
+</details>
+
+<details>
+  <summary><span class="tag stop">STOP</span> Gap down below the 10-MA</summary>
+  <div class="det-body">
+    <p>No special handling. Run the same opening-range routine as stage S4 — five minutes, then the stop goes to the range low.</p>
+  </div>
+</details>
+
+<footer>
+  Educational reference, not financial advice. Trading involves risk of loss.
+  The thresholds shown are one trader's, tuned to his own account and statistics —
+  treat them as a starting hypothesis and revise them from your own records.
+  Nothing is stored or sent anywhere; all calculation happens in your browser.
+</footer>
+
+</div>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var port=$('port'), riskpct=$('riskpct'), entry=$('entry'),
+      lod=$('lod'), cushion=$('cushion'), atr=$('atr');
+
+  function money(n){
+    return '$'+n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+  function money0(n){
+    return '$'+Math.round(n).toLocaleString();
+  }
+  function pct(n){
+    return (n>=0?'+':'−')+Math.abs(n).toFixed(1)+'%';
+  }
+  function setChip(el,cls){
+    el.className='chip'+(cls?' '+cls:'');
+  }
+
+  var current={valid:false};
+
+  function recalc(){
+    var P=parseFloat(port.value),
+        rp=parseFloat(riskpct.value),
+        e=parseFloat(entry.value),
+        l=parseFloat(lod.value),
+        c=parseFloat(cushion.value),
+        a=parseFloat(atr.value);
+
+    var stop = isFinite(l) ? l*(1-c/100) : NaN;
+    var ok = isFinite(e) && isFinite(stop) && e>stop;
+    var budget = (isFinite(P)&&isFinite(rp)&&P>0) ? P*rp/100 : NaN;
+
+    var out={
+      budget:'—', budgetN:' ', rval:'—', rvalN:' ',
+      shares:'—', sharesN:' ',
+      e0:'—', s1:'—', s2:'—', s3:'—', m1:'—', m2:'—', m3:'—',
+      q1:'—', q2:'—', q3:'—',
+      t1:'—', t2:'—', t3:'—', t4:'—', t5:'—',
+      mt1:'—', mt2:'—', mt3:'—', mt4:'—', mt5:'—',
+      cap:'—', avgr:'—', atrmult:'—', gate:'—'
+    };
+
+    if(isFinite(budget)) {
+      out.budget = money0(budget);
+      out.budgetN = rp.toFixed(2)+'% of '+money0(P);
+    }
+
+    current={valid:false};
+
+    if(ok){
+      var R = e - stop;
+      out.e0 = money(e);
+      out.rval = money(R);
+      out.rvalN = 'entry − stop ('+money(stop)+')';
+
+      var stops=[], targets=[];
+      [[0.33,'1'],[0.66,'2'],[1,'3']].forEach(function(p){
+        var px = e - p[0]*R;
+        stops.push(px);
+        out['s'+p[1]] = money(px);
+        out['m'+p[1]] = pct(-100*p[0]*R/e);
+      });
+
+      [1,2,3,4,5].forEach(function(k){
+        var px = e + k*R;
+        targets.push(px);
+        out['t'+k] = money(px);
+        out['mt'+k] = pct(100*k*R/e);
+      });
+
+      var n=0, capital=null;
+      if(isFinite(budget) && budget>0){
+        n = Math.floor(budget/R);
+        if(n>0){
+          var third = Math.floor(n/3);
+          capital = n*e;
+          out.shares = n.toLocaleString();
+          out.sharesN = 'shares · ' + third + ' / ' + third + ' / ' + (n-2*third) + ' per stop';
+          out.q1 = third+' sh';
+          out.q2 = third+' sh';
+          out.q3 = (n-2*third)+' sh';
+          out.cap = money0(capital) + (isFinite(P)&&P>0 ? ' · '+(100*capital/P).toFixed(1)+'% of book' : '');
+          out.avgr = '−0.67R ≈ −'+money0(0.663*budget);
+        }
+      }
+
+      var lodDist=null;
+      if(isFinite(a) && a>0){
+        var atrD = e*a/100;
+        var m = 2*R/atrD;
+        lodDist = 100*(e-l)/atrD;
+        out.atrmult = m.toFixed(1)+'×';
+        out.gate = lodDist.toFixed(0)+'%';
+        setChip($('chipGate'), lodDist<=60 ? 'pass' : (lodDist<=70 ? 'warn' : 'fail'));
+        setChip($('chipAtr'), m<=2 ? 'pass' : (m<=3 ? 'warn' : 'fail'));
+      }
+
+      current={valid:n>0, e:e, l:l, c:c, a:isFinite(a)?a:null, stop:stop, R:R,
+               n:n, capital:capital, budget:isFinite(budget)?budget:null,
+               lodDist:lodDist, stops:stops, targets:targets};
+    }
+
+    for(var k in out){ var el=$(k); if(el) el.textContent=out[k]; }
+    var showAtr = ok && isFinite(a) && a>0;
+    $('chipAtr').hidden = !showAtr;
+    $('chipGate').hidden = !showAtr;
+  }
+
+  [port,riskpct,entry,lod,cushion,atr].forEach(function(el){
+    el.addEventListener('input',recalc);
+    el.addEventListener('change',recalc);
+  });
+  recalc();
+
+  /* ================= TRADE LOG ================= */
+
+  var KEY='rladder.trades', trades=[];
+  var STAGES=[['S0','S0 · Entry'],['S1','S1 · First shave'],['S2','S2 · Day 3 reset'],
+              ['S3','S3 · Trailing'],['S4','S4 · Opening-range trail']];
+
+  function loadTrades(){
+    try{ var raw=localStorage.getItem(KEY); trades=raw?JSON.parse(raw):[]; }
+    catch(err){ trades=[]; }
+    if(!Object.prototype.toString.call(trades).match(/Array/)) trades=[];
+  }
+  function saveTrades(){
+    try{ localStorage.setItem(KEY,JSON.stringify(trades)); return true; }
+    catch(err){ return false; }
+  }
+  function msg(text,cls){
+    var m=$('logMsg'); m.textContent=text||''; m.className='msg'+(cls?' '+cls:'');
+  }
+  function esc(s){
+    return String(s).replace(/[&<>"]/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
+    });
+  }
+  function today(){
+    var d=new Date(), p=function(n){return (n<10?'0':'')+n};
+    return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+  }
+
+  $('logBtn').addEventListener('click',function(){
+    var t=$('ticker').value.trim().toUpperCase();
+    if(!t){ msg('Enter a ticker first.','bad'); $('ticker').focus(); return; }
+    if(!current.valid){ msg('Check the prices — entry must be above the stop.','bad'); return; }
+
+    trades.unshift({
+      id: Date.now(),
+      ticker: t,
+      opened: today(),
+      entry: current.e,
+      lod: current.l,
+      cushionPct: current.c,
+      stop: current.stop,
+      R: current.R,
+      shares: current.n,
+      capital: current.capital,
+      budget: current.budget,
+      atrPct: current.a,
+      lodDist: current.lodDist,
+      stops: current.stops,
+      targets: current.targets,
+      stage: 'S0',
+      closed: null
+    });
+
+    if(saveTrades()){
+      msg(t+' logged — levels frozen at these prices.','ok');
+      $('ticker').value='';
+    } else {
+      trades.shift();
+      msg('Browser storage is blocked, so nothing was saved.','bad');
+    }
+    render();
+  });
+
+  function render(){
+    var list=$('tradeList');
+    if(!trades.length){
+      list.innerHTML='<p class="empty">No trades yet. Fill in the calculator above, add a ticker, and log one.</p>';
+    } else {
+      list.innerHTML=trades.map(function(t){
+        var done=!!t.closed, r=done?t.closed.r:null;
+        var sign=(r!=null&&r>=0)?'pos':'neg';
+        var h='<div class="trade'+(done?' done':'')+'" data-id="'+t.id+'">';
+        h+='<div class="t-top"><span class="t-tick">'+esc(t.ticker)+'</span>'
+          +'<span class="t-date">'+t.opened+(done?' → '+t.closed.date:'')+'</span>';
+        if(done) h+='<span class="t-res '+sign+'">'+(r>=0?'+':'')+r.toFixed(2)+'R</span>';
+        h+='</div>';
+
+        h+='<div class="t-grid">'
+          +'<div>Entry <b>'+money(t.entry)+'</b></div>'
+          +'<div>1R <b>'+money(t.R)+'</b></div>'
+          +'<div>Shares <b>'+t.shares+'</b></div>'
+          +'<div>Stops <b>'+t.stops.map(function(s){return s.toFixed(2)}).join(' / ')+'</b></div>'
+          +'<div>+2R <b>'+money(t.targets[1])+'</b></div>'
+          +'<div>+4R <b>'+money(t.targets[3])+'</b></div>'
+          +'</div>';
+
+        h+='<div class="t-acts">';
+        if(!done){
+          h+='<select data-act="stage">'+STAGES.map(function(s){
+            return '<option value="'+s[0]+'"'+(t.stage===s[0]?' selected':'')+'>'+s[1]+'</option>';
+          }).join('')+'</select>';
+          h+='<button type="button" class="btn sm" data-act="close">Close</button>';
+        }
+        h+='<span class="spacer"></span>'
+          +'<button type="button" class="btn sm danger" data-act="del">Delete</button></div>';
+
+        if(!done){
+          h+='<div class="closepanel" hidden data-panel="close">'
+            +'<div class="field"><label>Exit price</label>'
+            +'<input type="number" step="0.01" inputmode="decimal" data-f="exit"></div>'
+            +'<div class="field"><label>Result R</label>'
+            +'<input type="number" step="0.01" inputmode="decimal" data-f="r"></div>'
+            +'<button type="button" class="btn sm primary" data-act="confirmClose">Save</button></div>';
+        }
+        return h+'</div>';
+      }).join('');
+    }
+
+    var closed=trades.filter(function(t){return t.closed;});
+    var wins=closed.filter(function(t){return t.closed.r>0;}).length;
+    var tot=closed.reduce(function(s,t){return s+t.closed.r;},0);
+    $('stOpen').textContent=trades.length-closed.length;
+    $('stClosed').textContent=closed.length;
+    $('stWin').textContent=closed.length?Math.round(100*wins/closed.length)+'%':'—';
+    $('stAvg').textContent=closed.length?(tot/closed.length>=0?'+':'')+(tot/closed.length).toFixed(2):'—';
+    $('stTot').textContent=closed.length?(tot>=0?'+':'')+tot.toFixed(2):'—';
+    $('stAvgWrap').className='stat'+(closed.length?(tot>=0?' pos':' neg'):'');
+    $('stTotWrap').className='stat'+(closed.length?(tot>=0?' pos':' neg'):'');
+  }
+
+  function findTrade(id){
+    for(var i=0;i<trades.length;i++){ if(String(trades[i].id)===String(id)) return trades[i]; }
+    return null;
+  }
+
+  $('tradeList').addEventListener('click',function(ev){
+    var btn=ev.target.closest('[data-act]');
+    if(!btn || btn.tagName==='SELECT') return;
+    var card=btn.closest('.trade'), t=findTrade(card.getAttribute('data-id'));
+    if(!t) return;
+    var act=btn.getAttribute('data-act');
+
+    if(act==='del'){
+      if(btn.dataset.armed){
+        trades=trades.filter(function(x){return x!==t;});
+        saveTrades(); render();
+      } else {
+        btn.dataset.armed='1'; btn.textContent='Tap again';
+        setTimeout(function(){
+          if(btn.isConnected){ delete btn.dataset.armed; btn.textContent='Delete'; }
+        },3500);
+      }
+      return;
+    }
+
+    if(act==='close'){
+      var p=card.querySelector('[data-panel="close"]');
+      p.hidden=!p.hidden;
+      if(!p.hidden) p.querySelector('[data-f="exit"]').focus();
+      return;
+    }
+
+    if(act==='confirmClose'){
+      var panel=btn.closest('.closepanel');
+      var ex=parseFloat(panel.querySelector('[data-f="exit"]').value);
+      var rr=parseFloat(panel.querySelector('[data-f="r"]').value);
+      if(!isFinite(rr)){
+        if(!isFinite(ex)){ panel.querySelector('[data-f="exit"]').focus(); return; }
+        rr=(ex-t.entry)/t.R;
+      }
+      t.closed={date:today(), exit:isFinite(ex)?ex:null, r:rr};
+      saveTrades(); render();
+    }
+  });
+
+  $('tradeList').addEventListener('input',function(ev){
+    var sel=ev.target.closest('select[data-act="stage"]');
+    if(!sel) return;
+    var t=findTrade(sel.closest('.trade').getAttribute('data-id'));
+    if(t){ t.stage=sel.value; saveTrades(); }
+  });
+
+  $('tradeList').addEventListener('change',function(ev){
+    var panel=ev.target.closest('.closepanel');
+    if(!panel || ev.target.getAttribute('data-f')!=='exit') return;
+    var t=findTrade(panel.closest('.trade').getAttribute('data-id'));
+    var ex=parseFloat(ev.target.value);
+    var rField=panel.querySelector('[data-f="r"]');
+    if(t && isFinite(ex) && !rField.value) rField.value=((ex-t.entry)/t.R).toFixed(2);
+  });
+
+  /* ---- export ---- */
+  var CSV_COLS=['ticker','opened','status','stage','entry','low_of_day','cushion_pct',
+    'final_stop','r_per_share','shares','capital','risk_budget','atr_pct','lod_dist_pct',
+    'stop_1','stop_2','target_2r','target_4r','closed_date','exit','result_r'];
+
+  function csvCell(v){
+    if(v==null) return '';
+    var s=String(v);
+    return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  }
+  function toCSV(){
+    var rows=[CSV_COLS.join(',')];
+    trades.forEach(function(t){
+      rows.push([
+        t.ticker, t.opened, t.closed?'closed':'open', t.closed?'S5':t.stage,
+        t.entry.toFixed(2), t.lod.toFixed(2), t.cushionPct,
+        t.stop.toFixed(2), t.R.toFixed(4), t.shares,
+        t.capital!=null?t.capital.toFixed(2):'', t.budget!=null?t.budget.toFixed(2):'',
+        t.atrPct!=null?t.atrPct:'', t.lodDist!=null?t.lodDist.toFixed(0):'',
+        t.stops[0].toFixed(2), t.stops[1].toFixed(2),
+        t.targets[1].toFixed(2), t.targets[3].toFixed(2),
+        t.closed?t.closed.date:'', (t.closed&&t.closed.exit!=null)?t.closed.exit.toFixed(2):'',
+        t.closed?t.closed.r.toFixed(3):''
+      ].map(csvCell).join(','));
+    });
+    return rows.join('\n');
+  }
+
+  function showExport(label,text,filename,mime){
+    $('exportLbl').textContent=label;
+    $('exportText').value=text;
+    var a=$('dlBtn');
+    try{
+      if(a.href && a.href.indexOf('blob:')===0) URL.revokeObjectURL(a.href);
+      a.href=URL.createObjectURL(new Blob([text],{type:mime}));
+      a.setAttribute('download',filename);
+      a.hidden=false;
+    }catch(err){ a.hidden=true; }
+    $('exportPanel').hidden=false;
+    $('exportPanel').scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+
+  $('csvBtn').addEventListener('click',function(){
+    if(!trades.length){ return; }
+    showExport('CSV — paste into Sheets or Excel', toCSV(),
+      'trades-'+today()+'.csv', 'text/csv');
+  });
+  $('jsonBtn').addEventListener('click',function(){
+    showExport('JSON backup — keep this to restore later',
+      JSON.stringify(trades,null,2), 'trades-backup-'+today()+'.json', 'application/json');
+  });
+  $('closeExport').addEventListener('click',function(){ $('exportPanel').hidden=true; });
+
+  $('copyBtn').addEventListener('click',function(){
+    var ta=$('exportText'), btn=this;
+    function done(){ btn.textContent='Copied'; setTimeout(function(){btn.textContent='Copy';},1600); }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(ta.value).then(done,function(){ ta.select(); });
+    } else { ta.select(); }
+  });
+
+  $('restoreFile').addEventListener('change',function(ev){
+    var f=ev.target.files && ev.target.files[0];
+    if(!f) return;
+    var fr=new FileReader();
+    fr.onload=function(){
+      try{
+        var data=JSON.parse(fr.result);
+        if(!Object.prototype.toString.call(data).match(/Array/)) throw 0;
+        var seen={}; trades.forEach(function(t){seen[t.id]=1;});
+        var added=0;
+        data.forEach(function(t){
+          if(t && t.ticker && t.stops && t.targets && !seen[t.id]){ trades.push(t); added++; }
+        });
+        trades.sort(function(a,b){return b.id-a.id;});
+        saveTrades(); render();
+        msg(added+' trade'+(added===1?'':'s')+' restored.','ok');
+      }catch(err){ msg('That file could not be read as a backup.','bad'); }
+      ev.target.value='';
+    };
+    fr.readAsText(f);
+  });
+
+  loadTrades();
+  render();
+
+  var stepper=$('stepper');
+  var btns=Array.prototype.slice.call(stepper.querySelectorAll('button'));
+  var ids=['s0','s1','s2','s3','s4','s5'];
+
+  function select(id,scroll){
+    btns.forEach(function(b){
+      b.setAttribute('aria-pressed', b.getAttribute('data-t')===id ? 'true':'false');
+    });
+    ids.forEach(function(s){ $(s).classList.toggle('on', s===id); });
+    if(scroll){ $(id).scrollIntoView({behavior:'smooth',block:'center'}); }
+    try{ localStorage.setItem('rladder.state',id); }catch(err){}
+  }
+
+  stepper.addEventListener('click',function(ev){
+    var b=ev.target.closest('button');
+    if(b) select(b.getAttribute('data-t'), true);
+  });
+
+  var saved=null;
+  try{ saved=localStorage.getItem('rladder.state'); }catch(err){}
+  select(saved && $(saved) ? saved : 's0', false);
+})();
+</script>
+</body>
+</html>
